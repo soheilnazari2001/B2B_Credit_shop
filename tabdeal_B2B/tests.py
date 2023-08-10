@@ -39,8 +39,8 @@ class APITestCase(TestCase):
         seller1.refresh_from_db()
         seller2.refresh_from_db()
 
-        self.assertEqual(seller1.credits, 60.0)
-        self.assertEqual(seller2.credits, 140.0)
+        self.assertEqual(seller1.credit, 60.0)
+        self.assertEqual(seller2.credit, 140.0)
 
         response = self.client.post(f'/increase_credits/{seller1.id}/', {'amount': 40.0})
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -51,11 +51,11 @@ class APITestCase(TestCase):
         seller1.refresh_from_db()
         seller2.refresh_from_db()
 
-        self.assertEqual(seller1.credits, 100.0)
-        self.assertEqual(seller2.credits, 200.0)
+        self.assertEqual(seller1.credit, 100.0)
+        self.assertEqual(seller2.credit, 200.0)
         # Perform transfers for each seller
-        handle_1 = seller1.credits
-        handle_2 = seller2.credits
+        handle_1 = seller1.credit
+        handle_2 = seller2.credit
         for i in range(10):
             amount = 1 * (i + 1)
             response = self.client.post(f'/transfer_credits/{seller1.id}/',
@@ -67,16 +67,16 @@ class APITestCase(TestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             seller1.refresh_from_db()
             seller2.refresh_from_db()
-            self.assertEqual(seller1.credits, handle_1 - amount)
-            self.assertEqual(seller2.credits, handle_2 - amount)
-            handle_1 = seller1.credits
-            handle_2 = seller2.credits
+            self.assertEqual(seller1.credit, handle_1 - amount)
+            self.assertEqual(seller2.credit, handle_2 - amount)
+            handle_1 = seller1.credit
+            handle_2 = seller2.credit
             transactions_count = Transaction.objects.count()
             self.assertEqual(transactions_count, (i + 1) * 2)
 
         # Check the final credits and transactions
-        self.assertEqual(seller1.credits, 100.0 - 55.0)
-        self.assertEqual(seller2.credits, 200.0 - 55.0)
+        self.assertEqual(seller1.credit, 100.0 - 55.0)
+        self.assertEqual(seller2.credit, 200.0 - 55.0)
         self.assertEqual(Transaction.objects.count(), 20)
 
 
