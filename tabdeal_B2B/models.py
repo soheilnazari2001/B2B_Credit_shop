@@ -1,9 +1,13 @@
+import threading
+from decimal import Decimal
+
 from django.db import models, transaction
 
 
 class Seller(models.Model):
     name = models.CharField(max_length=100)
     credit = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+    lock = threading.Lock()
 
     def __str__(self):
         return f'{self.name} - {self.credit}'
@@ -16,15 +20,21 @@ class Seller(models.Model):
         if existing_seller:
             raise ValueError('Seller with the same name already exists')
         with transaction.atomic():
-            return cls.objects.create(name=seller_name, credit=first_credit)
+            seller = cls.objects.create(name=seller_name, credit=first_credit)
+            IncreaseCredit.objects.create(seller=seller, amount=first_credit)
+            return seller
 
-    def increase_credit(self, amount):
-        if amount < 0:
+    def increase_credit(self, credit_amount):
+        if credit_amount < 0:
             raise ValueError('Invalid amount')
+
         with transaction.atomic():
-            self.credit += amount
-            IncreaseCredit.objects.create(seller=self, amount=amount)
+            self.refresh_from_db()
+            self.lock.acquire()
+            self.credit += Decimal(credit_amount)
+            IncreaseCredit.objects.create(seller=self, amount=credit_amount)
             self.save()
+            self.lock.release()
 
     def transfer_credits(self, phone_number, amount):
         if amount < 0:
@@ -32,9 +42,12 @@ class Seller(models.Model):
         elif amount > self.credit:
             raise ValueError('Insufficient credits')
         with transaction.atomic():
+            self.refresh_from_db()
+            self.lock.acquire()
             self.credit -= amount
             self.save()
             Transaction.objects.create(seller=self, phone_number=phone_number, amount=amount)
+            self.lock.release()
 
 
 class Transaction(models.Model):

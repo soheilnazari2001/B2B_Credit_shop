@@ -8,9 +8,10 @@ from .models import *
 
 @csrf_exempt
 @api_view(['POST'])
+@transaction.atomic
 def increase_credits(request, seller_id):
     seller = Seller.objects.select_for_update().get(pk=seller_id)
-    amount = float(request.data.get('amount', 0))
+    amount = Decimal(request.data.get('amount', 0))
     try:
         seller.increase_credit(amount)
         return Response({'message': f'Credits increased successfully in amount of {amount}'}, status=status.HTTP_200_OK)
@@ -20,10 +21,11 @@ def increase_credits(request, seller_id):
 
 @csrf_exempt
 @api_view(['POST'])
+@transaction.atomic
 def transfer_credits(request, seller_id):
     seller = Seller.objects.select_for_update().get(pk=seller_id)
     phone_number = request.data.get('phone_number')
-    amount = float(request.data.get('amount', 0))
+    amount = Decimal(request.data.get('amount', 0))
     try:
         seller.transfer_credits(phone_number, amount)
         return Response({'message': f'Credits transferred successfully to {phone_number}'}, status=status.HTTP_200_OK)
@@ -33,9 +35,10 @@ def transfer_credits(request, seller_id):
 
 @csrf_exempt
 @api_view(['POST'])
+@transaction.atomic
 def make_sellers(request):
     seller_name = request.data.get('name')
-    credit = float(request.data.get('credit'))
+    credit = request.data.get('credit')
     try:
         Seller.create_seller(seller_name, credit)
         return Response({'message': f'Seller {seller_name} created successfully and increased with {credit} credits'},
